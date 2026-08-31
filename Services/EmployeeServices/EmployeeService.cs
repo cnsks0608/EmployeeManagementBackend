@@ -4,6 +4,7 @@ using EmployeeManagement.Api.Data;
 using EmployeeManagement.Api.DTOs.EmployeeDtos;
 using EmployeeManagement.Api.Models;
 using EmployeeManagement.Api.Exceptions;
+using EmployeeManagement.Api.DTOs;
 
 namespace EmployeeManagement.Api.Services.EmployeeServices
 {
@@ -17,14 +18,17 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             _context = context;
             _mapper = mapper;
         }
-        public async Task<List<EmployeeAdminDto>> GetAllEmployeesAsync(
+        public async Task<PagedResult<EmployeeAdminDto>> GetAllEmployeesAsync(
             string? search,
             string? email,   // bu parametrelerin sırası interfacetekiyle aynı olmalı yoksa hata alırız
             string? registrationNumber,
             decimal? minSalary,
             decimal? maxSalary,
             DateOnly? startHireDate,
-            DateOnly? endHireDate)
+            DateOnly? endHireDate,
+            int pageNumber = 1,
+            int pageSize = 10)
+
         {
             var query = _context.Employees.AsQueryable();  // henüz çalıştırılmamış Employees tablosu üzerinde yapılacak taslak sorgu
 
@@ -44,7 +48,7 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
 
             if (!string.IsNullOrWhiteSpace(registrationNumber))  // sicil no boş değilse, sicil no üzerinde ara
             {
-                var lowerRegistrationNumber = registrationNumber.ToLower();  // aynı sebeple sicil numarasında da büyük/küçük harf duyarlılığını kaldırıyoruz
+                var lowerRegistrationNumber = registrationNumber.ToLower();  // sicil numarasında da büyük/küçük harf duyarlılığını kaldırıyoruz
                 query = query.Where(e => e.RegistrationNumber.ToLower().Contains(lowerRegistrationNumber));
             }
 
@@ -68,10 +72,25 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 query = query.Where(e => e.HireDate <= endHireDate.Value);
             }
 
-            var employees = await query.ToListAsync();  // veritabanından filtrelere uygun verileri employee modeli formatında listeli bir şekilde çekeriz 
-            var employeeDtos = _mapper.Map<List<EmployeeAdminDto>>(employees); // employee olarak çektiğimiz verileri employeeadmindto ya çeviririz 
-            return employeeDtos;  // en son fonksiyon sonucu employeeadmindto şeklinde döner 
+            var totalCount = await query.CountAsync();  // filtrelere uyan TOPLAM kayıt sayısı (sayfalama uygulanmadan ÖNCE sayılmalı eğer sonra yapsaydık sadece o sayfadaki count sayısı gelirdi)
+            var skip = (pageNumber - 1) * pageSize;  // kaç kaydın atlanacağını hesaplıyoruz
+            query = query.Skip(skip).Take(pageSize);  // ilgili sayfanın kayıtlarını kesiyoruz
+            var employees = await query.ToListAsync();  // sadece o sayfadaki kayıtları veritabanından çekiyoruz
+            var employeeDtos = _mapper.Map<List<EmployeeAdminDto>>(employees);
+
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            return new PagedResult<EmployeeAdminDto>
+            {
+                Items = employeeDtos,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages
+            };
         }
+        
+        
 
         public async Task<EmployeeAdminDto> GetEmployeeByIdAsync(int id)
         {
@@ -82,7 +101,7 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 throw new NotFoundException("Bu Id'ye sahip bir çalışan bulunamadı.");
             }
 
-            var employeeDto = _mapper.Map<EmployeeAdminDto>(employee);  // employee modelinden employeeadmindto'ya (en zengin dto, salary de dahil) çevrilir (controllerda admin ve user dto larına göre ayrım yapılır)
+            var employeeDto = _mapper.Map<EmployeeAdminDto>(employee);
             return employeeDto;
         }
 

@@ -5,6 +5,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using AutoMapper;
 using EmployeeManagement.Api.Exceptions;
+using EmployeeManagement.Api.DTOs;
 
 namespace EmployeeManagement.Api.Controllers
 {
@@ -38,17 +39,27 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] decimal? minSalary,
             [FromQuery] decimal? maxSalary,
             [FromQuery] DateOnly? startHireDate,
-            [FromQuery] DateOnly? endHireDate)
+            [FromQuery] DateOnly? endHireDate,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var employees = await _employeeService.GetAllEmployeesAsync(
-                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate); // verileri servisten employeeadmindto şeklinde (zengin) alırız
+            var pagedEmployees = await _employeeService.GetAllEmployeesAsync(
+                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate, pageNumber, pageSize); // verileri servisten employeeadmindto şeklinde (zengin) alırız
 
             if (User.IsInRole("Admin"))
             {
-                return Ok(employees);  // Admin ise olduğu gibi görür (Salary dahil)
+                return Ok(pagedEmployees);  // Admin ise olduğu gibi görür (Salary dahil)
             }
 
-            var userVersion = _mapper.Map<List<EmployeeUserDto>>(employees);  // Admin değilse employeeuserdto şeklinde görür (salary olmadan)
+            // Admin değilse, Items içindeki listeyi EmployeeUserDto'ya çeviriyoruz, sayfalama bilgilerini koruyoruz
+            var userVersion = new PagedResult<EmployeeUserDto>
+            {
+                Items = _mapper.Map<List<EmployeeUserDto>>(pagedEmployees.Items),
+                PageNumber = pagedEmployees.PageNumber,
+                PageSize = pagedEmployees.PageSize,
+                TotalCount = pagedEmployees.TotalCount,
+                TotalPages = pagedEmployees.TotalPages
+            };
             return Ok(userVersion);
         }
 

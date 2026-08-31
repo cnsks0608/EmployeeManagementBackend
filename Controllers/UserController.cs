@@ -3,6 +3,10 @@ using EmployeeManagement.Api.Services.UserServices;
 using EmployeeManagement.Api.DTOs.UserDtos;
 using Microsoft.AspNetCore.Authorization;
 using EmployeeManagement.Api.Exceptions;
+using EmployeeManagement.Api.Enums;
+using EmployeeManagement.Api.DTOs;
+using FluentValidation;
+using EmployeeManagement.Api.Validators;
 
 namespace EmployeeManagement.Api.Controllers
 {
@@ -11,10 +15,12 @@ namespace EmployeeManagement.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
 
-        public UserController(IUserService userService)
+        public UserController(IUserService userService, IValidator<ChangePasswordDto> changePasswordValidator)
         {
             _userService = userService;
+            _changePasswordValidator = changePasswordValidator;
         }
 
         [HttpGet("GetMe")]
@@ -65,9 +71,14 @@ namespace EmployeeManagement.Api.Controllers
 
         [HttpGet("GetAllUsers")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers(
+            [FromQuery] string? search,
+            [FromQuery] RoleType? role,
+            [FromQuery] int? employeeId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var users = await _userService.GetAllUsersAsync();
+            var users = await _userService.GetAllUsersAsync(search, role, employeeId, pageNumber, pageSize);
             return Ok(users);
         }
 
@@ -121,5 +132,32 @@ namespace EmployeeManagement.Api.Controllers
                 return NotFound(ex.Message);
             }
         }
+
+        [HttpPut("ChangePassword")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto changePasswordDto)
+        {
+            var validationResult = await _changePasswordValidator.ValidateAsync(changePasswordDto);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(validationResult.Errors);
+            }
+
+            try
+            {
+                await _userService.ChangePasswordAsync(changePasswordDto);
+                return Ok(new { message = "Şifreniz başarılı bir şekilde güncellendi." });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+
     }
 }
