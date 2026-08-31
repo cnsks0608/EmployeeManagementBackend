@@ -1,3 +1,4 @@
+using EmployeeManagement.Api.Enums;
 namespace EmployeeManagement.Api.DTOs.UserDtos
 {
     public class UserAdminDto
@@ -7,5 +8,7 @@ namespace EmployeeManagement.Api.DTOs.UserDtos
         public string Email { get; set; } = string.Empty;
         public int RoleId { get; set; } 
         public int EmployeeId { get; set; }
+        public RowStatus RowStatus { get; set; }
+
     }
 }

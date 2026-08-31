@@ -1,3 +1,6 @@
+using EmployeeManagement.Api.Enums;
+
+
 namespace EmployeeManagement.Api.Models
 {
     public class Employee
@@ -8,7 +11,9 @@ namespace EmployeeManagement.Api.Models
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;                  
         public decimal Salary { get; set; }                           
-        public DateOnly HireDate { get; set; }                         
+        public DateOnly HireDate { get; set; } 
+
+        public RowStatus RowStatus { get; set; } = RowStatus.Created;  // yeni kayıt oluşunca varsayılan olarak Created                        
     }
 }
 

@@ -82,7 +82,8 @@ namespace EmployeeManagement.Api.Services.UserServices
             RoleType? role,
             int? employeeId,
             int pageNumber = 1,
-            int pageSize = 10)
+            int pageSize = 10,
+            string status = "active")
         {
             var query = _context.Users.AsQueryable();
 
@@ -102,6 +103,15 @@ namespace EmployeeManagement.Api.Services.UserServices
             if (employeeId.HasValue)
             {
                 query = query.Where(u => u.EmployeeId == employeeId.Value);
+            }
+
+            if (status == "deleted")
+            {
+                query = query.Where(u => u.RowStatus == RowStatus.Deleted);
+            }
+            else
+            {
+                query = query.Where(u => u.RowStatus == RowStatus.Created || u.RowStatus == RowStatus.Updated);
             }
 
             var totalCount = await query.CountAsync();  // filtrelere uyan TOPLAM kayıt sayısı (sayfalama uygulanmadan ÖNCE sayılmalı eğer sonra yapsaydık sadece o sayfadaki count sayısı gelirdi)
@@ -148,6 +158,7 @@ namespace EmployeeManagement.Api.Services.UserServices
             user.Username = updateUserByAdminDto.Username;
             user.Email = updateUserByAdminDto.Email;
             user.RoleId = (int)updateUserByAdminDto.RoleType;
+            user.RowStatus = RowStatus.Updated;
 
             await _context.SaveChangesAsync();
 
@@ -164,7 +175,7 @@ namespace EmployeeManagement.Api.Services.UserServices
                 throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
             }
 
-            _context.Users.Remove(user);
+            user.RowStatus = RowStatus.Deleted;
             await _context.SaveChangesAsync();
         }
 
@@ -188,6 +199,28 @@ namespace EmployeeManagement.Api.Services.UserServices
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);  // yeni şifreyi hashleyip kaydediyoruz
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<UserAdminDto> ReactivateUserAsync(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+
+            if (user == null)
+            {
+                throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
+            }
+
+            if (user.RowStatus != RowStatus.Deleted)
+            {
+                throw new Exception("Bu kullanıcı zaten aktif.");
+            }
+
+            user.RowStatus = RowStatus.Updated;
+
+            await _context.SaveChangesAsync();
+
+            var userDto = _mapper.Map<UserAdminDto>(user);
+            return userDto;
         }
     }
 }

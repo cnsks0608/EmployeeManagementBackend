@@ -3,6 +3,7 @@ using EmployeeManagement.Api.Data;
 using EmployeeManagement.Api.DTOs.UserDtos;
 using EmployeeManagement.Api.Models;
 using AutoMapper;
+using EmployeeManagement.Api.Enums;
 
 namespace EmployeeManagement.Api.Services.UserServices
 {
@@ -53,6 +54,11 @@ namespace EmployeeManagement.Api.Services.UserServices
             bool isPasswordValid = BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash);
 
             if (!isPasswordValid)
+            {
+                throw new Exception("Kullanıcı adı/email veya şifre hatalı.");
+            }
+
+            if (user.RowStatus == RowStatus.Deleted)
             {
                 throw new Exception("Kullanıcı adı/email veya şifre hatalı.");
             }

@@ -5,6 +5,7 @@ using EmployeeManagement.Api.DTOs.EmployeeDtos;
 using EmployeeManagement.Api.Models;
 using EmployeeManagement.Api.Exceptions;
 using EmployeeManagement.Api.DTOs;
+using EmployeeManagement.Api.Enums;
 
 namespace EmployeeManagement.Api.Services.EmployeeServices
 {
@@ -27,7 +28,8 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             DateOnly? startHireDate,
             DateOnly? endHireDate,
             int pageNumber = 1,
-            int pageSize = 10)
+            int pageSize = 10,
+            string status = "active")
 
         {
             var query = _context.Employees.AsQueryable();  // henüz çalıştırılmamış Employees tablosu üzerinde yapılacak taslak sorgu
@@ -72,6 +74,15 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 query = query.Where(e => e.HireDate <= endHireDate.Value);
             }
 
+            if (status == "deleted")
+            {
+                query = query.Where(e => e.RowStatus == RowStatus.Deleted);
+            }
+            else
+            {
+                query = query.Where(e => e.RowStatus == RowStatus.Created || e.RowStatus == RowStatus.Updated);
+            }
+
             var totalCount = await query.CountAsync();  // filtrelere uyan TOPLAM kayıt sayısı (sayfalama uygulanmadan ÖNCE sayılmalı eğer sonra yapsaydık sadece o sayfadaki count sayısı gelirdi)
             var skip = (pageNumber - 1) * pageSize;  // kaç kaydın atlanacağını hesaplıyoruz
             query = query.Skip(skip).Take(pageSize);  // ilgili sayfanın kayıtlarını kesiyoruz
@@ -89,10 +100,10 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 TotalPages = totalPages
             };
         }
-        
-        
 
-        public async Task<EmployeeAdminDto> GetEmployeeByIdAsync(int id)
+
+
+        public async Task<EmployeeAdminDto> GetEmployeeByIdAsync(int id) // burada admin veya user ile ilgili herhangi bir yetki kontrolü yapmadık (user, rowstatusu deleted olan birine erişemez gibi), controllerda yapıcaz
         {
             var employee = await _context.Employees.FindAsync(id);  // veritabanında Employees tablosunda ilgili id'ye sahip kullanıcı bulunur
 
@@ -133,6 +144,8 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             employee.Salary = updateEmployeeByAdminDto.Salary;
             employee.HireDate = updateEmployeeByAdminDto.HireDate;     // dto dan gelen bilgiler employee değişkeninin uygun alanlarına atanır 
 
+            employee.RowStatus = RowStatus.Updated;  // güncelleme yapıldığı için RowStatus'u Updated yapıyoruz
+
             await _context.SaveChangesAsync();   // veritabanında bu değişiklikler kornur 
 
             var employeeDto = _mapper.Map<EmployeeAdminDto>(employee);   // employee modelinde olan değişken maplenerek admindto ya çevrilir ve return edilir 
@@ -148,8 +161,43 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 throw new NotFoundException("Bu Id'ye sahip bir çalışan bulunamadı.");
             }
 
-            _context.Employees.Remove(employee);
+            employee.RowStatus = RowStatus.Deleted;  // soft delete
+
+            var linkedUser = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeId == id);  // bu employee'ye bağlı bir User hesabı var mı diye bakıyoruz
+            if (linkedUser != null)
+            {
+                linkedUser.RowStatus = RowStatus.Deleted;  // varsa, o User hesabını da otomatik olarak Deleted yapıyoruz
+            }
             await _context.SaveChangesAsync();
+        }
+
+
+        public async Task<EmployeeAdminDto> ReactivateEmployeeAsync(int id)
+        {
+            var employee = await _context.Employees.FindAsync(id);
+
+            if (employee == null)
+            {
+                throw new NotFoundException("Bu Id'ye sahip bir çalışan bulunamadı.");
+            }
+
+            if (employee.RowStatus != RowStatus.Deleted)
+            {
+                throw new Exception("Bu çalışan zaten aktif.");
+            }
+
+            employee.RowStatus = RowStatus.Updated;
+
+            var linkedUser = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeId == id);  // bu employee'ye bağlı bir User hesabı var mı diye bakıyoruz
+            if (linkedUser != null)
+            {
+                linkedUser.RowStatus = RowStatus.Updated;  // varsa, o User hesabını da otomatik olarak tekrar aktif ediyoruz
+            }
+
+            await _context.SaveChangesAsync();
+
+            var employeeDto = _mapper.Map<EmployeeAdminDto>(employee);
+            return employeeDto;
         }
 
     }

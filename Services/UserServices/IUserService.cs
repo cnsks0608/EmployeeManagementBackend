@@ -15,10 +15,12 @@ namespace EmployeeManagement.Api.Services.UserServices
             RoleType? role,
             int? employeeId,
             int pageNumber = 1,   // varsayılan: 1. sayfa (belirtilmezse otomatik bu değer kullanılır)
-            int pageSize = 10);   // varsayılan: sayfa başına 10 kayıt
+            int pageSize = 10,   // varsayılan: sayfa başına 10 kayıt
+            string status = "active");
         Task<UserAdminDto> GetUserByIdAsync(int id);
         Task<UserAdminDto> UpdateUserByAdminAsync(int id, UpdateUserByAdminDto updateUserByAdminDto);
         Task DeleteUserByAdminAsync(int id);
         Task ChangePasswordAsync(ChangePasswordDto changePasswordDto);
+        Task<UserAdminDto> ReactivateUserAsync(int id);
     }
 }

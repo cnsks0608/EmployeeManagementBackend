@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using AutoMapper;
 using EmployeeManagement.Api.Exceptions;
 using EmployeeManagement.Api.DTOs;
+using EmployeeManagement.Api.Enums;
 
 namespace EmployeeManagement.Api.Controllers
 {
@@ -41,10 +42,14 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] DateOnly? startHireDate,
             [FromQuery] DateOnly? endHireDate,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string status = "active")
         {
+            var effectiveStatus = User.IsInRole("Admin") ? status : "active"; // normalde herkes status=deleted den silinmiş kullanıcılara ulaşabilir, bunu kontrollü hale getirmek için effectiveStatus adında bir değişken tanımlıyoruz, eğer status ile filtreleme yapmak istiyorsak, kullanıcı adminse status e ne yazdıysa (active, passive gibi) o döner ancak user ne yazarsa yazsın biz zorla status u active yaparız  
+
+
             var pagedEmployees = await _employeeService.GetAllEmployeesAsync(
-                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate, pageNumber, pageSize); // verileri servisten employeeadmindto şeklinde (zengin) alırız
+                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate, pageNumber, pageSize, effectiveStatus); // verileri servisten employeeadmindto şeklinde (zengin) alırız
 
             if (User.IsInRole("Admin"))
             {
@@ -76,10 +81,16 @@ namespace EmployeeManagement.Api.Controllers
                     return Ok(employee);
                 }
 
+                if (employee.RowStatus == RowStatus.Deleted) // kullanıcı admin değilse ve erişmek istediği employeenin row statusu deleted ise 
+                {
+                    return NotFound("Bu Id'ye sahip bir çalışan bulunamadı.");
+                }
+
+
                 var myEmployeeIdClaim = User.FindFirst("EmployeeId")?.Value;  // kullanıcının kendi bağlı olduğu employeeid sini tokendan okuyoruz
                 var myEmployeeId = int.Parse(myEmployeeIdClaim!);
 
-                if (myEmployeeId == id)  // sorgulanan employee, kullanıcının kendi employeei mi
+                if (myEmployeeId == id)  // sorgulanan employee, kullanıcının kendi employeesi mi
                 {
                     return Ok(employee);  // evetse servisten gelen employeeadmindto ile salary dahil göster
                 }
@@ -146,6 +157,25 @@ namespace EmployeeManagement.Api.Controllers
             catch (NotFoundException ex)
             {
                 return NotFound(ex.Message);
+            }
+        }
+
+        [HttpPut("ReactivateEmployee/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ReactivateEmployee(int id)
+        {
+            try
+            {
+                var employee = await _employeeService.ReactivateEmployeeAsync(id);
+                return Ok(new { message = "Çalışan başarılı bir şekilde tekrar aktif edildi.", employee });
+            }
+            catch (NotFoundException ex) // o id ye sahip çalışan bulunamadıysa
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);  // kayıt zaten aktifse 
             }
         }
     }

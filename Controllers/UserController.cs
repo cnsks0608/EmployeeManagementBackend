@@ -76,9 +76,10 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] RoleType? role,
             [FromQuery] int? employeeId,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string status = "active")
         {
-            var users = await _userService.GetAllUsersAsync(search, role, employeeId, pageNumber, pageSize);
+            var users = await _userService.GetAllUsersAsync(search, role, employeeId, pageNumber, pageSize, status);
             return Ok(users);
         }
 
@@ -147,6 +148,25 @@ namespace EmployeeManagement.Api.Controllers
             {
                 await _userService.ChangePasswordAsync(changePasswordDto);
                 return Ok(new { message = "Şifreniz başarılı bir şekilde güncellendi." });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("ReactivateUser/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ReactivateUser(int id)
+        {
+            try
+            {
+                var user = await _userService.ReactivateUserAsync(id);
+                return Ok(new { message = "Kullanıcı başarılı bir şekilde tekrar aktif edildi.", user });
             }
             catch (NotFoundException ex)
             {
