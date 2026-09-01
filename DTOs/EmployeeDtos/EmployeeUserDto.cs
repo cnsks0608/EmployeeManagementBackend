@@ -8,5 +8,9 @@ namespace EmployeeManagement.Api.DTOs.EmployeeDtos
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public DateOnly HireDate { get; set; }
+
+        public int TitleId { get; set; }
+        public string TitleName { get; set; } = string.Empty;
+        public string DepartmentName { get; set; } = string.Empty;
     }
 }

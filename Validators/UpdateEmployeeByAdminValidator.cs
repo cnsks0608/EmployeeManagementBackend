@@ -39,6 +39,9 @@ namespace EmployeeManagement.Api.Validators
             RuleFor(x => x.HireDate)
                 .NotEmpty().WithMessage("İşe giriş tarihi boş bırakılamaz.")
                 .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.Today)).WithMessage("İşe giriş tarihi gelecekte olamaz.");
+
+            RuleFor(x => x.TitleId)
+                .MustAsync(TitleExists).WithMessage("Bu Id'ye sahip bir ünvan bulunamadı.");
         }
 
         private int GetCurrentEmployeeId()
@@ -59,6 +62,11 @@ namespace EmployeeManagement.Api.Validators
         {
             var currentId = GetCurrentEmployeeId();
             return !await _context.Employees.AnyAsync(e => e.Email == email && e.Id != currentId, cancellationToken);
+        }
+
+        private async Task<bool> TitleExists(int titleId, CancellationToken cancellationToken)
+        {
+            return await _context.Titles.AnyAsync(t => t.Id == titleId, cancellationToken);
         }
     }
 }

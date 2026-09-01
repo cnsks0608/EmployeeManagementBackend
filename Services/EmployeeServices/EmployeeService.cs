@@ -29,10 +29,17 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             DateOnly? endHireDate,
             int pageNumber = 1,
             int pageSize = 10,
-            string status = "active")
+            string status = "active",
+            int? departmentId = null,
+            int? titleId = null)
+
 
         {
-            var query = _context.Employees.AsQueryable();  // henüz çalıştırılmamış Employees tablosu üzerinde yapılacak taslak sorgu
+            var query = _context.Employees
+                .Include(e => e.Title)   // lazy loadingi önlemek için -> diğer türlü sadece employees tablosuyla alakalı bilgileri getirir, bunları getirmez
+                .ThenInclude(t => t.Department)
+                .AsQueryable();
+              // henüz çalıştırılmamış Employees tablosu üzerinde yapılacak taslak sorgu
 
             if (!string.IsNullOrWhiteSpace(search))  // search boş değilse, isim/soyisim/birleşik üzerinde ara
             {
@@ -40,7 +47,7 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 query = query.Where(e =>
                     e.FirstName.ToLower().Contains(lowerSearch) || // substring mantığıyla arama yapar mesela ben cansu yerine yanlışlıkla canu yazarsam gelmez 
                     e.LastName.ToLower().Contains(lowerSearch) ||
-                    (e.FirstName + " " + e.LastName).ToLower().Contains(lowerSearch));
+                   (e.FirstName + " " + e.LastName).ToLower().Contains(lowerSearch));
             }
 
             if (!string.IsNullOrWhiteSpace(email))  // email boş değilse, email üzerinde ara
@@ -83,6 +90,16 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 query = query.Where(e => e.RowStatus == RowStatus.Created || e.RowStatus == RowStatus.Updated);
             }
 
+            if (departmentId.HasValue)
+            {
+                query = query.Where(e => e.Title.DepartmentId == departmentId.Value);  // department bilgileri doğrudan employee entitysinde yok önce employee entitysinde titlea erişip oradan departmenta geçmeliyiz
+            }
+
+            if (titleId.HasValue)
+            {
+                query = query.Where(e => e.TitleId == titleId.Value);
+            }
+
             var totalCount = await query.CountAsync();  // filtrelere uyan TOPLAM kayıt sayısı (sayfalama uygulanmadan ÖNCE sayılmalı eğer sonra yapsaydık sadece o sayfadaki count sayısı gelirdi)
             var skip = (pageNumber - 1) * pageSize;  // kaç kaydın atlanacağını hesaplıyoruz
             query = query.Skip(skip).Take(pageSize);  // ilgili sayfanın kayıtlarını kesiyoruz
@@ -97,7 +114,8 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalCount = totalCount,
-                TotalPages = totalPages
+                TotalPages = totalPages,
+
             };
         }
 
@@ -105,7 +123,10 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
 
         public async Task<EmployeeAdminDto> GetEmployeeByIdAsync(int id) // burada admin veya user ile ilgili herhangi bir yetki kontrolü yapmadık (user, rowstatusu deleted olan birine erişemez gibi), controllerda yapıcaz
         {
-            var employee = await _context.Employees.FindAsync(id);  // veritabanında Employees tablosunda ilgili id'ye sahip kullanıcı bulunur
+            var employee = await _context.Employees
+                .Include(e => e.Title)  // Dönüş değeri olarak Title bilgisi içeren bir DTO döndüren her metoda Include eklendi
+                .ThenInclude(t => t.Department)
+                .FirstOrDefaultAsync(e => e.Id == id);  // veritabanında Employees tablosunda ilgili id'ye sahip kullanıcı bulunur (FindAsync yerine, Include kullanabilmek için FirstOrDefaultAsync kullanıyoruz)
 
             if (employee == null)
             {
@@ -124,13 +145,19 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             _context.Employees.Add(employee);  // employees tablosuna bu employee eklenir 
             await _context.SaveChangesAsync();   // değişiklikler veritabanına kaydedilir
 
+            await _context.Entry(employee).Reference(e => e.Title).LoadAsync();  // yeni eklenen employee'nin Title bilgisini de yüklüyoruz (TitleName/DepartmentName doğru dönsün diye)
+            await _context.Entry(employee.Title).Reference(t => t.Department).LoadAsync();
+
             var employeeDto = _mapper.Map<EmployeeAdminDto>(employee);   // employee modelinden employeeadmindto ya çevrilir ve return edilir
             return employeeDto;
         }
 
         public async Task<EmployeeAdminDto> UpdateEmployeeByAdminAsync(int id, UpdateEmployeeByAdminDto updateEmployeeByAdminDto)
         {
-            var employee = await _context.Employees.FindAsync(id);  // veritabanında Employees tablosunda ilgili id ye sahip kullanıcı bulunur ve employee değişkenine atanır 
+            var employee = await _context.Employees
+                .Include(e => e.Title)
+                .ThenInclude(t => t.Department)
+                .FirstOrDefaultAsync(e => e.Id == id);  // veritabanında Employees tablosunda ilgili id ye sahip kullanıcı bulunur ve employee değişkenine atanır 
 
             if (employee == null)
             {
@@ -143,10 +170,14 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             employee.Email = updateEmployeeByAdminDto.Email;
             employee.Salary = updateEmployeeByAdminDto.Salary;
             employee.HireDate = updateEmployeeByAdminDto.HireDate;     // dto dan gelen bilgiler employee değişkeninin uygun alanlarına atanır 
+            employee.TitleId = updateEmployeeByAdminDto.TitleId;
 
             employee.RowStatus = RowStatus.Updated;  // güncelleme yapıldığı için RowStatus'u Updated yapıyoruz
 
             await _context.SaveChangesAsync();   // veritabanında bu değişiklikler kornur 
+
+            await _context.Entry(employee).Reference(e => e.Title).LoadAsync();  // TitleId değişmiş olabileceği için, Title bilgisini güncel haliyle tekrar yüklüyoruz
+            await _context.Entry(employee.Title).Reference(t => t.Department).LoadAsync();
 
             var employeeDto = _mapper.Map<EmployeeAdminDto>(employee);   // employee modelinde olan değişken maplenerek admindto ya çevrilir ve return edilir 
             return employeeDto;
@@ -154,7 +185,8 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
 
         public async Task DeleteEmployeeByAdminAsync(int id)
         {
-            var employee = await _context.Employees.FindAsync(id);
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.Id == id);
 
             if (employee == null)
             {
@@ -174,7 +206,10 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
 
         public async Task<EmployeeAdminDto> ReactivateEmployeeAsync(int id)
         {
-            var employee = await _context.Employees.FindAsync(id);
+            var employee = await _context.Employees
+                .Include(e => e.Title)
+                .ThenInclude(t => t.Department)
+                .FirstOrDefaultAsync(e => e.Id == id);
 
             if (employee == null)
             {

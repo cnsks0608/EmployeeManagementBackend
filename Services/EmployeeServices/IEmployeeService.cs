@@ -17,7 +17,9 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             DateOnly? endHireDate,  // servis katmanındaki GetAllEmployeesAsync fonksiyonu çalıştıktan sonra geriye employeeadmindto daki alanları return edecek
             int pageNumber = 1,   // varsayılan: 1. sayfa (belirtilmezse otomatik bu değer kullanılır)
             int pageSize = 10,  // varsayılan: sayfa başına 10 kayıt
-            string status = "active");
+            string status = "active",
+            int? departmentId = null,
+            int? titleId = null);
 
         Task<EmployeeAdminDto> GetEmployeeByIdAsync(int id);
         Task<EmployeeAdminDto> CreateEmployeeByAdminAsync(CreateEmployeeByAdminDto createEmployeeByAdminDto); // parametre olarak kullanıcının gönderdiği veriyi alıyor (createemployeeByAdmindto), geriye employeeadmindto return ediyor bu sefer id si de dönüyor 

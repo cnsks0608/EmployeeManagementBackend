@@ -8,5 +8,7 @@ namespace EmployeeManagement.Api.DTOs.EmployeeDtos
         public string Email { get; set; } = string.Empty;
         public decimal Salary { get; set; }
         public DateOnly HireDate { get; set; }
+
+        public int TitleId { get; set; }
     }
 }

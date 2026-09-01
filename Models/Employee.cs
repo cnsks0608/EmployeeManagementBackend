@@ -14,6 +14,9 @@ namespace EmployeeManagement.Api.Models
         public DateOnly HireDate { get; set; } 
 
         public RowStatus RowStatus { get; set; } = RowStatus.Created;  // yeni kayıt oluşunca varsayılan olarak Created                        
+
+        public int TitleId { get; set; }  // her employee'nin mutlaka bir ünvanı olmalı, bu yüzden nullable değil
+        public Title Title { get; set; } = null!;  // navigation property, TitleId'ye bakıp Title bilgisini otomatik getirir
     }
 }
 
