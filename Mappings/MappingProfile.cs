@@ -3,6 +3,7 @@ using EmployeeManagement.Api.Models;
 using EmployeeManagement.Api.DTOs.EmployeeDtos;
 using EmployeeManagement.Api.DTOs.UserDtos;
 using EmployeeManagement.Api.DTOs.CompanyDtos;
+using EmployeeManagement.Api.DTOs.LogDtos;
 
 namespace EmployeeManagement.Api.Mappings
 {
@@ -36,6 +37,8 @@ namespace EmployeeManagement.Api.Mappings
 
             CreateMap<Department, DepartmentDto>();
             CreateMap<Title, TitleDto>();
+
+            CreateMap<RequestLog, RequestLogDto>();
         }
     }
 }

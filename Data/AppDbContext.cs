@@ -15,5 +15,7 @@ namespace EmployeeManagement.Api.Data
 
         public DbSet<Department> Departments { get; set; }
         public DbSet<Title> Titles { get; set; }
+        
+        public DbSet<RequestLog> RequestLogs { get; set; }
     }
 }

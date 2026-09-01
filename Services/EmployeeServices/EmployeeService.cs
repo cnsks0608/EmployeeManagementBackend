@@ -31,7 +31,9 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             int pageSize = 10,
             string status = "active",
             int? departmentId = null,
-            int? titleId = null)
+            int? titleId = null,
+            string? sortBy = null,
+            string? sortDirection = null)
 
 
         {
@@ -39,7 +41,7 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 .Include(e => e.Title)   // lazy loadingi önlemek için -> diğer türlü sadece employees tablosuyla alakalı bilgileri getirir, bunları getirmez
                 .ThenInclude(t => t.Department)
                 .AsQueryable();
-              // henüz çalıştırılmamış Employees tablosu üzerinde yapılacak taslak sorgu
+            // henüz çalıştırılmamış Employees tablosu üzerinde yapılacak taslak sorgu
 
             if (!string.IsNullOrWhiteSpace(search))  // search boş değilse, isim/soyisim/birleşik üzerinde ara
             {
@@ -98,6 +100,25 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             if (titleId.HasValue)
             {
                 query = query.Where(e => e.TitleId == titleId.Value);
+            }
+
+            if (sortBy == "salary")  // Bu kısmı gereksiz kayıtlar üzerinde de karşılşatırma ve sıralama işlemi yapmamak için bütün filtrelerden sonra yaptık 
+            {
+                query = sortDirection == "desc"
+                    ? query.OrderByDescending(e => e.Salary)
+                    : query.OrderBy(e => e.Salary);  // OrderBy -> ascending demek
+            }
+            else if (sortBy == "hireDate")
+            {
+                query = sortDirection == "desc"
+                    ? query.OrderByDescending(e => e.HireDate)
+                    : query.OrderBy(e => e.HireDate);
+            }
+            else if (sortBy == "name")
+            {
+                query = sortDirection == "desc"
+                    ? query.OrderByDescending(e => e.FirstName).ThenByDescending(e => e.LastName)
+                    : query.OrderBy(e => e.FirstName).ThenBy(e => e.LastName);
             }
 
             var totalCount = await query.CountAsync();  // filtrelere uyan TOPLAM kayıt sayısı (sayfalama uygulanmadan ÖNCE sayılmalı eğer sonra yapsaydık sadece o sayfadaki count sayısı gelirdi)

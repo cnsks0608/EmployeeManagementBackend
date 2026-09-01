@@ -45,13 +45,15 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string status = "active",
             [FromQuery] int? departmentId = null,
-            [FromQuery] int? titleId = null)
+            [FromQuery] int? titleId = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortDirection = null)
         {
             var effectiveStatus = User.IsInRole("Admin") ? status : "active"; // normalde herkes status=deleted den silinmiş kullanıcılara ulaşabilir, bunu kontrollü hale getirmek için effectiveStatus adında bir değişken tanımlıyoruz, eğer status ile filtreleme yapmak istiyorsak, kullanıcı adminse status e ne yazdıysa (active, passive gibi) o döner ancak user ne yazarsa yazsın biz zorla status u active yaparız  
 
 
             var pagedEmployees = await _employeeService.GetAllEmployeesAsync(
-                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate, pageNumber, pageSize, effectiveStatus, departmentId, titleId); // verileri servisten employeeadmindto şeklinde (zengin) alırız
+                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate, pageNumber, pageSize, effectiveStatus, departmentId, titleId, sortBy, sortDirection); // verileri servisten employeeadmindto şeklinde (zengin) alırız
 
             if (User.IsInRole("Admin"))
             {

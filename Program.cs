@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using EmployeeManagement.Api.Middleware;
 using EmployeeManagement.Api.Services.CompanyServices;
+using EmployeeManagement.Api.Services.LogServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +33,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
-
+builder.Services.AddScoped<IRequestLogService, RequestLogService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -64,6 +65,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler(_ => { });
 
+app.UseMiddleware<RequestLoggingMiddleware>(); // Eğer middleware'i Authentication'dan önce koyarsak, her türlü istek (token geçersiz olsa bile, hatta login denemesi başarısız olsa bile) loglanır — çünkü middleware, Authentication reddetmeden önce devreye giriyor/// Eğer sonra koyarsak, Authentication reddettiği istekler hiç loglanmaz — çünkü Authentication middleware'i, geçersiz durumlarda isteği daha ileri göndermeyebilir.
 // Authentication ve Authorization middleware'leri - SIRA ÖNEMLİ, Authentication önce gelmeli
 app.UseAuthentication();  // gelen istekte token var mı diye kontrol eder, tokenın içindeki claimleri httpcontext adlı bir yere yerleştiriyor (ancak token yoksa veya geçersizse (token geçersizse httpcontexte claim koymaz) isteği reddetme gibi bir durum yok o controllerda yapılır)
 app.UseAuthorization(); // [Authorize] ın çalışmasını sağlayan altyapı
