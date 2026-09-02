@@ -7,6 +7,7 @@ using EmployeeManagement.Api.Models;
 using EmployeeManagement.Api.Exceptions;
 using EmployeeManagement.Api.Enums;
 using EmployeeManagement.Api.DTOs;
+using EmployeeManagement.Api.Services.LogServices;
 
 namespace EmployeeManagement.Api.Services.UserServices
 {
@@ -15,12 +16,16 @@ namespace EmployeeManagement.Api.Services.UserServices
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IHttpContextAccessor _httpContextAccessor;  // tokendan id claimini okuyabilmek için 
+        private readonly IActivityLogService _activityLogService;
+        private readonly string? _currentUsername;
 
-        public UserService(AppDbContext context, IMapper mapper, IHttpContextAccessor httpContextAccessor)
+        public UserService(AppDbContext context, IMapper mapper, IHttpContextAccessor httpContextAccessor, IActivityLogService activityLogService)
         {
             _context = context;
             _mapper = mapper;
             _httpContextAccessor = httpContextAccessor;
+            _activityLogService = activityLogService;
+            _currentUsername = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
         }
 
         // yardımcı, private metod - token'daki NameIdentifier claim'inden, giriş yapmış kullanıcının Id'sini okur
@@ -37,10 +42,24 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null) // mesela kullanıcı login durumundayken geçerli bir tokenı varken admin tarafından silinirse, userid null dönebilir (o yüzden burada exception attık)
             {
-                throw new NotFoundException("Kullanıcı bulunamadı.");
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: _currentUsername,
+                  action: "Read",
+                  description: $"{_currentUsername} adlı kullanıcı, kendi bilgilerini görüntülemeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı");
+                throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı");
             }
 
             var userDto = _mapper.Map<UserAdminDto>(user);
+            await _activityLogService.LogActivityAsync(
+              username: _currentUsername,
+              targetName: _currentUsername,
+              action: "Read",
+              description: $"{_currentUsername} adlı kullanıcı, kendi bilgilerini görüntüledi.",
+              isSuccess: true);
+
             return userDto;
         }
 
@@ -51,13 +70,38 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)
             {
-                throw new NotFoundException("Kullanıcı bulunamadı.");
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: _currentUsername,
+                  action: "Update",
+                  description: $"{_currentUsername} adlı kullanıcı, kendi bilgilerini güncellemeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı");
+                throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı");
             }
+            var changes = new List<string>();
+
+            if (user.Username != updateMeDto.Username)
+                changes.Add($"Username: {user.Username} → {updateMeDto.Username}");
+
+            if (user.Email != updateMeDto.Email)
+                changes.Add($"Email: {user.Email} → {updateMeDto.Email}");
+            // Değişiklik kontrollerini alanları değişirmeden önce yapmalıyız yoksa değişiklik yokmuş gibi olur
 
             user.Username = updateMeDto.Username;
             user.Email = updateMeDto.Email;
+            user.RowStatus = RowStatus.Updated;
 
             await _context.SaveChangesAsync();
+
+            var changeDescription = changes.Count > 0 ? string.Join(", ", changes) : "herhangi bir değişiklik yapılmadı";
+
+            await _activityLogService.LogActivityAsync(
+                username: _currentUsername,
+                targetName: _currentUsername,
+                action: "Update",
+                description: $"{_currentUsername} adlı kullanıcı, kendi bilgilerini güncelledi: {changeDescription}",
+                isSuccess: true);
 
             var userDto = _mapper.Map<UserAdminDto>(user);
             return userDto;
@@ -70,11 +114,24 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)
             {
-                throw new NotFoundException("Kullanıcı bulunamadı.");
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: _currentUsername,
+                  action: "Delete",
+                  description: $"{_currentUsername} adlı kullanıcı, kendi hesabını silmeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı");
+                throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
             }
 
-            _context.Users.Remove(user);
+            user.RowStatus = RowStatus.Deleted;
             await _context.SaveChangesAsync();
+            await _activityLogService.LogActivityAsync(
+              username: _currentUsername,
+              targetName: _currentUsername,
+              action: "Delete",
+              description: $"{_currentUsername} adlı kullanıcı, kendi hesabını sildi.",
+              isSuccess: true);
         }
 
         public async Task<PagedResult<UserAdminDto>> GetAllUsersAsync(
@@ -121,6 +178,28 @@ namespace EmployeeManagement.Api.Services.UserServices
             var userDtos = _mapper.Map<List<UserAdminDto>>(users);
 
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+            var appliedFilters = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(search))
+                appliedFilters.Add($"search: {search}");
+
+            if (role.HasValue)
+                appliedFilters.Add($"role: {role}");
+
+            if (employeeId.HasValue)
+                appliedFilters.Add($"employeeId: {employeeId}");
+
+            var filterDescription = appliedFilters.Count > 0
+                ? $" (Filtreler: {string.Join(", ", appliedFilters)})"
+                : "";
+
+            await _activityLogService.LogActivityAsync(
+                username: _currentUsername,
+                targetName: null,
+                action: "Read",
+                description: $"{_currentUsername} adlı kullanıcı, kullanıcı listesini görüntüledi. ({totalCount} kayıt bulundu){filterDescription}",
+                isSuccess: true);
+
 
             return new PagedResult<UserAdminDto>
             {
@@ -139,10 +218,24 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)
             {
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: null,
+                  action: "Read",
+                  description: $"{_currentUsername} adlı kullanıcı, Id'si {id} olan kullanıcıyı görüntülemeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı.");
                 throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
             }
 
             var userDto = _mapper.Map<UserAdminDto>(user);
+            await _activityLogService.LogActivityAsync(
+               username: _currentUsername,
+               targetName: user.Username,
+               action: "Read",
+               description: $"{_currentUsername} adlı kullanıcı, {user.Username} adlı kullanıcının bilgilerini görüntüledi.",
+               isSuccess: true);
+
             return userDto;
         }
 
@@ -152,8 +245,27 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)
             {
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: null,
+                  action: "Update",
+                  description: $"{_currentUsername} adlı kullanıcı, Id'si {id} olan kullanıcıyı güncellemeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı.");
                 throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
             }
+
+            var changes = new List<string>();
+
+            if (user.Username != updateUserByAdminDto.Username)
+                changes.Add($"Username: {user.Username} → {updateUserByAdminDto.Username}");
+
+            if (user.Email != updateUserByAdminDto.Email)
+                changes.Add($"Email: {user.Email} → {updateUserByAdminDto.Email}");
+
+            if (user.RoleId != (int)updateUserByAdminDto.RoleType)
+                changes.Add($"Role Id: {user.RoleId} → {(int)updateUserByAdminDto.RoleType}");
+
 
             user.Username = updateUserByAdminDto.Username;
             user.Email = updateUserByAdminDto.Email;
@@ -163,6 +275,16 @@ namespace EmployeeManagement.Api.Services.UserServices
             await _context.SaveChangesAsync();
 
             var userDto = _mapper.Map<UserAdminDto>(user);
+
+            var changeDescription = changes.Count > 0 ? string.Join(", ", changes) : "herhangi bir değişiklik yapılmadı";
+
+            await _activityLogService.LogActivityAsync(
+                username: _currentUsername,
+                targetName: user.Username,
+                action: "Update",
+                description: $"{_currentUsername} adlı kullanıcı, {user.Username} adlı kullanıcının bilgilerini güncelledi: {changeDescription}",
+                isSuccess: true);
+
             return userDto;
         }
 
@@ -172,6 +294,13 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)
             {
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: null,
+                  action: "Delete",
+                  description: $"{_currentUsername} adlı kullanıcı, Id'si {id} olan kullanıcıyı silmeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı.");
                 throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
             }
 
@@ -186,19 +315,40 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)  // savunma amaçlı kontrol, GetMeAsync'deki gibi
             {
-                throw new NotFoundException("Kullanıcı bulunamadı.");
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: _currentUsername,
+                  action: "Update",
+                  description: $"{_currentUsername} adlı kullanıcı, kendi şifresini değiştirmeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı.");
+                throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
             }
 
             bool isCurrentPasswordValid = BCrypt.Net.BCrypt.Verify(changePasswordDto.CurrentPassword, user.PasswordHash);  // girilen mevcut şifre, veritabanındaki hashlenmiş şifreyle eşleşiyor mu kontrol ediyoruz
 
             if (!isCurrentPasswordValid)
             {
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: _currentUsername,
+                  action: "Update",
+                  description: $"{_currentUsername} adlı kullanıcı, kendi şifresini değiştirmeye çalıştı ama mevcut şifresi hatalıydı.",
+                  isSuccess: false,
+                  failureReason: "Mevcut şifre hatalı.");
                 throw new Exception("Mevcut şifreniz hatalı.");  // NotFoundException değil, genel Exception - çünkü bu 400 olarak kalmalı
             }
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);  // yeni şifreyi hashleyip kaydediyoruz
 
             await _context.SaveChangesAsync();
+
+            await _activityLogService.LogActivityAsync(
+              username: _currentUsername,
+              targetName: _currentUsername,
+              action: "Update",
+              description: $"{_currentUsername} adlı kullanıcı, kendi şifresini başarıyla değiştirdi.",
+              isSuccess: true);
         }
 
         public async Task<UserAdminDto> ReactivateUserAsync(int id)
@@ -207,17 +357,38 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)
             {
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: null,
+                  action: "Reactivate",
+                  description: $"{_currentUsername} adlı kullanıcı, Id'si {id} olan kullanıcıyı yeniden aktifleştirmeye çalıştı ama bulunamadı.",
+                  isSuccess: false,
+                  failureReason: "Bu Id'ye sahip bir kullanıcı bulunamadı.");
                 throw new NotFoundException("Bu Id'ye sahip bir kullanıcı bulunamadı.");
             }
 
             if (user.RowStatus != RowStatus.Deleted)
             {
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: user.Username,
+                  action: "Reactivate",
+                  description: $"{_currentUsername} adlı kullanıcı, {user.Username} adlı kullanıcıyı yeniden aktifleştirmeye çalıştı ama zaten aktifti.",
+                  isSuccess: false,
+                  failureReason: "Bu kullanıcı zaten aktif.");
                 throw new Exception("Bu kullanıcı zaten aktif.");
             }
 
             user.RowStatus = RowStatus.Updated;
 
             await _context.SaveChangesAsync();
+
+            await _activityLogService.LogActivityAsync(
+              username: _currentUsername,
+              targetName: user.Username,
+              action: "Reactivate",
+              description: $"{_currentUsername} adlı kullanıcı, {user.Username} adlı kullanıcıyı yeniden aktifleştirdi.",
+              isSuccess: true);
 
             var userDto = _mapper.Map<UserAdminDto>(user);
             return userDto;

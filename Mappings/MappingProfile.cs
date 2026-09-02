@@ -39,6 +39,7 @@ namespace EmployeeManagement.Api.Mappings
             CreateMap<Title, TitleDto>();
 
             CreateMap<RequestLog, RequestLogDto>();
+            CreateMap<ActivityLog, ActivityLogDto>();
         }
     }
 }

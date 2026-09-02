@@ -34,6 +34,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IRequestLogService, RequestLogService>();
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();

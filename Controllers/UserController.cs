@@ -7,6 +7,7 @@ using EmployeeManagement.Api.Enums;
 using EmployeeManagement.Api.DTOs;
 using FluentValidation;
 using EmployeeManagement.Api.Validators;
+using EmployeeManagement.Api.Services.LogServices;
 
 namespace EmployeeManagement.Api.Controllers
 {
@@ -16,11 +17,19 @@ namespace EmployeeManagement.Api.Controllers
     {
         private readonly IUserService _userService;
         private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
+        private readonly IActivityLogService _logService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly UpdateMeValidator _updateMeValidator;
+        private readonly UpdateUserByAdminValidator _updateUserByAdminValidator;
 
-        public UserController(IUserService userService, IValidator<ChangePasswordDto> changePasswordValidator)
+        public UserController(IUserService userService, IValidator<ChangePasswordDto> changePasswordValidator, IActivityLogService logService, IHttpContextAccessor httpContextAccessor, UpdateMeValidator updateMeValidator, UpdateUserByAdminValidator updateUserByAdminValidator)
         {
             _userService = userService;
             _changePasswordValidator = changePasswordValidator;
+            _logService = logService;
+            _httpContextAccessor = httpContextAccessor;
+            _updateMeValidator = updateMeValidator;
+            _updateUserByAdminValidator = updateUserByAdminValidator;
         }
 
         [HttpGet("GetMe")]
@@ -43,6 +52,18 @@ namespace EmployeeManagement.Api.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateMe(UpdateMeDto updateMeDto)
         {
+            var validationResult = await _updateMeValidator.ValidateAsync(updateMeDto);
+            if (!validationResult.IsValid)
+            {
+                await _logService.LogActivityAsync(
+                    username: User.Identity?.Name,
+                    targetName: User.Identity?.Name,
+                    action: "Update",
+                    description: $"{User.Identity?.Name} adlı kullanıcı, bilgilerini güncellemeye çalıştı ama girdiği bilgiler geçersizdi.",
+                    isSuccess: false,
+                    failureReason: string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
+                return BadRequest(validationResult.Errors);
+            }
             try
             {
                 var user = await _userService.UpdateMeAsync(updateMeDto);
@@ -108,6 +129,17 @@ namespace EmployeeManagement.Api.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUserByAdmin(int id, UpdateUserByAdminDto updateUserByAdminDto)
         {
+            var validationResult = await _updateUserByAdminValidator.ValidateAsync(updateUserByAdminDto);
+            if (!validationResult.IsValid)
+            {
+                await _logService.LogActivityAsync(
+                    username: User.Identity?.Name,
+                    targetName: updateUserByAdminDto.Username, // bu kısım da tam tutarlı değil ama hala veritabanına erişim istemiyoruz
+                    action: "UpdateUserByAdmin",
+                    description: $"{User.Identity?.Name} adlı Admin, {updateUserByAdminDto.Username} adlı kullanıcıyı güncellemeye çalıştı ama girdiği bilgiler geçersizdi.",
+                    isSuccess: false,
+                    failureReason: string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
+                return BadRequest(validationResult.Errors);}
             try
             {
                 var user = await _userService.UpdateUserByAdminAsync(id, updateUserByAdminDto);
@@ -141,6 +173,13 @@ namespace EmployeeManagement.Api.Controllers
             var validationResult = await _changePasswordValidator.ValidateAsync(changePasswordDto);
             if (!validationResult.IsValid)
             {
+                await _logService.LogActivityAsync(
+                    username: User.Identity?.Name,
+                    targetName: User.Identity?.Name,
+                    action: "Update",
+                    description: $"{User.Identity?.Name} adlı kullanıcı, şifresini değiştirmeye çalıştı ama girdiği bilgiler geçersizdi.",
+                    isSuccess: false,
+                    failureReason: string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
                 return BadRequest(validationResult.Errors);
             }
 

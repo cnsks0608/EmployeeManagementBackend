@@ -4,6 +4,7 @@ using EmployeeManagement.Api.DTOs.UserDtos;
 using EmployeeManagement.Api.Models;
 using AutoMapper;
 using EmployeeManagement.Api.Enums;
+using EmployeeManagement.Api.Services.LogServices;
 
 namespace EmployeeManagement.Api.Services.UserServices
 {
@@ -12,12 +13,18 @@ namespace EmployeeManagement.Api.Services.UserServices
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IJwtService _jwtService;
+        private readonly IActivityLogService _activityLogService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly string? _currentUsername;
 
-        public AuthService(AppDbContext context, IJwtService jwtService, IMapper mapper)
+        public AuthService(AppDbContext context, IJwtService jwtService, IMapper mapper, IActivityLogService activityLogService, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
             _mapper = mapper;
             _jwtService = jwtService;
+            _activityLogService = activityLogService;
+            _httpContextAccessor = httpContextAccessor;
+            _currentUsername = _httpContextAccessor.HttpContext?.User.Identity.Name;
         }
 
         public async Task<UserAdminDto> CreateUserByAdminAsync(CreateUserByAdminDto createUserByAdminDto)
@@ -37,6 +44,14 @@ namespace EmployeeManagement.Api.Services.UserServices
             await _context.SaveChangesAsync();
 
             var userDto = _mapper.Map<UserAdminDto>(newUser);
+
+            await _activityLogService.LogActivityAsync(
+              username: _currentUsername,
+              targetName: newUser.Username,
+              action: "Create",
+              description: $"{_currentUsername}, {newUser.Username} adlı yeni bir kullanıcı hesabı oluşturdu.",
+              isSuccess: true);
+
             return userDto;
 
         }
@@ -48,6 +63,12 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (user == null)
             {
+                await _activityLogService.LogActivityAsync(
+                    username: loginDto.MailOrUsername,
+                    targetName: null,
+                    action: "Login",
+                    description: $"{loginDto.MailOrUsername} ile giriş yapmaya çalışıldı ancak kullanıcı bulunamadı.",
+                    isSuccess: false);
                 throw new Exception("Kullanıcı adı/email veya şifre hatalı.");
             }
 
@@ -55,16 +76,44 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             if (!isPasswordValid)
             {
+                await _activityLogService.LogActivityAsync(
+                    username: loginDto.MailOrUsername,
+                    targetName: loginDto.MailOrUsername,
+                    action: "Login",
+                    description: $"{loginDto.MailOrUsername} ile giriş yapmaya çalışıldı ancak şifre hatalı.",
+                    isSuccess: false);
                 throw new Exception("Kullanıcı adı/email veya şifre hatalı.");
             }
 
             if (user.RowStatus == RowStatus.Deleted)
             {
+                await _activityLogService.LogActivityAsync(
+                    username: loginDto.MailOrUsername,
+                    targetName: loginDto.MailOrUsername,
+                    action: "Login",
+                    description: $"{loginDto.MailOrUsername} ile giriş yapmaya çalışıldı ancak kullanıcı silinmiş.",
+                    isSuccess: false);
                 throw new Exception("Kullanıcı adı/email veya şifre hatalı.");
             }
 
             var token = _jwtService.GenerateToken(user);
+            await _activityLogService.LogActivityAsync(
+                username: user.Username,
+                targetName: user.Username,
+                action: "Login",
+                description: $"{user.Username} adlı kullanıcı başarılı bir şekilde giriş yaptı.",
+                isSuccess: true);
             return token;
+        }
+
+        public async Task LogoutAsync()
+        {
+            await _activityLogService.LogActivityAsync(
+                username: _currentUsername,
+                targetName: _currentUsername,
+                action: "Logout",
+                description: $"{_currentUsername} adlı kullanıcı başarılı bir şekilde çıkış yaptı.",
+                isSuccess: true);
         }
 
     }

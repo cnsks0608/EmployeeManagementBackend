@@ -7,6 +7,7 @@ using AutoMapper;
 using EmployeeManagement.Api.Exceptions;
 using EmployeeManagement.Api.DTOs;
 using EmployeeManagement.Api.Enums;
+using EmployeeManagement.Api.Services.LogServices;
 
 namespace EmployeeManagement.Api.Controllers
 {
@@ -18,17 +19,19 @@ namespace EmployeeManagement.Api.Controllers
         private readonly IValidator<CreateEmployeeByAdminDto> _createEmployeeValidator;
         private readonly IValidator<UpdateEmployeeByAdminDto> _updateEmployeeValidator;
         private readonly IMapper _mapper;
+        private readonly IActivityLogService _activityLogService;
 
         public EmployeeController(
             IEmployeeService employeeService,
             IValidator<CreateEmployeeByAdminDto> createEmployeeValidator,
             IValidator<UpdateEmployeeByAdminDto> updateEmployeeValidator,
-            IMapper mapper)
+            IMapper mapper, IActivityLogService activityLogService)
         {
             _employeeService = employeeService;
             _createEmployeeValidator = createEmployeeValidator;
             _updateEmployeeValidator = updateEmployeeValidator;
             _mapper = mapper;
+            _activityLogService = activityLogService;
         }
 
         [HttpGet("GetAllEmployees")]
@@ -117,10 +120,20 @@ namespace EmployeeManagement.Api.Controllers
 
             if (!validationResult.IsValid)
             {
+                // controllerda yalnızca validatordan kaynaklı hataları logluyoruz, diğer her şeyi servis katmanında yaptık zaten
+                await _activityLogService.LogActivityAsync(
+                  username: User.Identity?.Name,
+                  targetName: null,
+                  action: "Create",
+                  description: $"{User.Identity?.Name} adlı kullanıcı, yeni bir çalışan oluşturmaya çalıştı ama girdiği bilgiler geçersizdi.",
+                  isSuccess: false,
+                  failureReason: string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
+                
                 return BadRequest(validationResult.Errors);
             }
 
             var employee = await _employeeService.CreateEmployeeByAdminAsync(createEmployeeByAdminDto);
+
             return Ok(new { message = "Çalışan başarılı bir şekilde oluşturuldu.", employee });
         }
 
@@ -133,6 +146,14 @@ namespace EmployeeManagement.Api.Controllers
 
             if (!validationResult.IsValid)
             {
+                await _activityLogService.LogActivityAsync(
+                    username: User.Identity?.Name,
+                    targetName: $"{updateEmployeeByAdminDto.FirstName} {updateEmployeeByAdminDto.LastName}",  // aslında bu çok doğru değil, dto ya girilen isim oluyor belki de kullanıcının gerçek ismi o değil ancak diğer türlü controller ın context ile veritabanına erişmesi gerekir ama bunu istemiyoruz
+                    action: "Update",
+                    description: $"{User.Identity?.Name} adlı kullanıcı, {id} id'li çalışanı güncellemeye çalıştı ama girdiği bilgiler geçersizdi.",
+                    isSuccess: false,
+                    failureReason: string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
+
                 return BadRequest(validationResult.Errors);
             }
 

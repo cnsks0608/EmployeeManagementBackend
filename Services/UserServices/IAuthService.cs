@@ -6,5 +6,6 @@ namespace EmployeeManagement.Api.Services.UserServices
     {
         Task<UserAdminDto> CreateUserByAdminAsync(CreateUserByAdminDto createUserByAdminDto);
         Task<string> LoginAsync(LoginDto loginDto);
+        Task LogoutAsync();
     }
 }

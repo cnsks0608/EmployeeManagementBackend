@@ -6,6 +6,7 @@ namespace EmployeeManagement.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Admin")]
     public class RequestLogController : ControllerBase
     {
         private readonly IRequestLogService _requestLogService;
@@ -16,7 +17,6 @@ namespace EmployeeManagement.Api.Controllers
         }
 
         [HttpGet("GetAllRequestLogs")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllRequestLogs(
             [FromQuery] string? httpMethod,
             [FromQuery] int? statusCode,
