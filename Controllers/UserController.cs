@@ -135,7 +135,7 @@ namespace EmployeeManagement.Api.Controllers
                 await _logService.LogActivityAsync(
                     username: User.Identity?.Name,
                     targetName: updateUserByAdminDto.Username, // bu kısım da tam tutarlı değil ama hala veritabanına erişim istemiyoruz
-                    action: "UpdateUserByAdmin",
+                    action: "Update",
                     description: $"{User.Identity?.Name} adlı Admin, {updateUserByAdminDto.Username} adlı kullanıcıyı güncellemeye çalıştı ama girdiği bilgiler geçersizdi.",
                     isSuccess: false,
                     failureReason: string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));

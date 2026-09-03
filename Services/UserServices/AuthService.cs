@@ -24,7 +24,7 @@ namespace EmployeeManagement.Api.Services.UserServices
             _jwtService = jwtService;
             _activityLogService = activityLogService;
             _httpContextAccessor = httpContextAccessor;
-            _currentUsername = _httpContextAccessor.HttpContext?.User.Identity.Name;
+            _currentUsername = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
         }
 
         public async Task<UserAdminDto> CreateUserByAdminAsync(CreateUserByAdminDto createUserByAdminDto)

@@ -7,6 +7,7 @@ namespace EmployeeManagement.Api.DTOs.UserDtos
         public string Username { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public int RoleId { get; set; } 
+        public string RoleName { get; set; } = string.Empty;
         public int EmployeeId { get; set; }
         public RowStatus RowStatus { get; set; }
 

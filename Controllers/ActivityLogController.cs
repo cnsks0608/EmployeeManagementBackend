@@ -23,9 +23,11 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] string? action,
             [FromQuery] bool? isSuccess,
             [FromQuery] DateTime? startDate,
-            [FromQuery] DateTime? endDate)
+            [FromQuery] DateTime? endDate,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var logs = await _activityLogService.GetAllActivityLogsAsync(username, targetName, action, isSuccess, startDate, endDate);
+            var logs = await _activityLogService.GetAllActivityLogsAsync(username, targetName, action, isSuccess, startDate, endDate, pageNumber, pageSize);
             return Ok(logs);
         }
     }

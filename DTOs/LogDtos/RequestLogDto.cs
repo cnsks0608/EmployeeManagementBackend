@@ -5,6 +5,8 @@ namespace EmployeeManagement.Api.DTOs.LogDtos
         public int Id { get; set; }
         public string HttpMethod { get; set; } = string.Empty;
         public string Path { get; set; } = string.Empty;
+         public string? QueryString { get; set; }   
+        public string? RequestBody { get; set; }   
         public int StatusCode { get; set; }
         public string? Username { get; set; }
         public DateTime CreatedAt { get; set; }

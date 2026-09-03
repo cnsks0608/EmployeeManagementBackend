@@ -5,6 +5,12 @@ namespace EmployeeManagement.Api.Middleware
 {
     public class GlobalExceptionHandler : IExceptionHandler
     {
+        private readonly IHostEnvironment _env;
+
+         public GlobalExceptionHandler(IHostEnvironment env)
+        {
+            _env = env;
+        }
         public async ValueTask<bool> TryHandleAsync(
             HttpContext httpContext,
             Exception exception,
@@ -16,7 +22,8 @@ namespace EmployeeManagement.Api.Middleware
             var errorResponse = new
             {
                 message = "Beklenmeyen bir hata oluştu.",
-                detail = exception.Message
+                // detail = exception.Message -> bu kısımda kötü niyetli biri sistem hakkında öğrenmemesi gereken bilgileri öğreebilir 
+                detail = _env.IsDevelopment() ? exception.Message : null // development ortamındaysak gerçek hata mesajını koy yoksa null koy dedik
             };
 
             await httpContext.Response.WriteAsJsonAsync(errorResponse, cancellationToken);

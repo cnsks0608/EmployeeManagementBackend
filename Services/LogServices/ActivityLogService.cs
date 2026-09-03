@@ -3,6 +3,7 @@ using EmployeeManagement.Api.Models;
 using EmployeeManagement.Api.DTOs.LogDtos;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
+using EmployeeManagement.Api.DTOs;
 
 namespace EmployeeManagement.Api.Services.LogServices
 {
@@ -12,6 +13,7 @@ namespace EmployeeManagement.Api.Services.LogServices
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly string? _currentUsername;
         private readonly IMapper _mapper;
+        
 
         public ActivityLogService(AppDbContext context, IHttpContextAccessor httpContextAccessor, IMapper mapper)
         {
@@ -45,13 +47,15 @@ namespace EmployeeManagement.Api.Services.LogServices
         }
         // burası her işlemden sonra tek tek log kaydı oluşturmak yerine bunu merkezi bir şekilde yapmamızı sağlayan yardımcı fonksiyon
 
-        public async Task<List<ActivityLogDto>> GetAllActivityLogsAsync(
+        public async Task<PagedResult<ActivityLogDto>> GetAllActivityLogsAsync(
             string? username,
             string? targetName,
             string? action,
             bool? isSuccess,
             DateTime? startDate,
-            DateTime? endDate)
+            DateTime? endDate,
+            int pageNumber = 1,
+            int pageSize = 10)
         {
             var query = _context.ActivityLogs.AsQueryable();
 
@@ -87,10 +91,16 @@ namespace EmployeeManagement.Api.Services.LogServices
                 query = query.Where(l => l.CreatedAt <= endDate.Value);
             }
 
-            var logs = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();  // en yeni logları en üstte göstermek için varsayılan olarak tarihe göre azalan sıralıyoruz
+            query = query.OrderByDescending(l => l.CreatedAt);  // en yeni loglar en üstte
 
+            var totalCount = await query.CountAsync();  // sayfalamadan ÖNCE, filtrelere uyan TOPLAM kayıt sayısı
+            var skip = (pageNumber - 1) * pageSize;
+            query = query.Skip(skip).Take(pageSize);
+            var logs = await query.ToListAsync();  // sadece o sayfadaki kayıtları çekiyoruz
 
             var logDtos = _mapper.Map<List<ActivityLogDto>>(logs);
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
 
             var appliedFilters = new List<string>();
 
@@ -124,11 +134,18 @@ namespace EmployeeManagement.Api.Services.LogServices
                 username: _currentUsername,
                 targetName: searchedTarget,
                 action: "Read",
-                description: $"{_currentUsername} adlı kullanıcı, aktivite loglarını görüntüledi. ({logDtos.Count} kayıt bulundu){filterDescription}",
+                description: $"{_currentUsername} adlı kullanıcı, aktivite loglarını görüntüledi. ({totalCount} kayıt bulundu){filterDescription}",
                 isSuccess: true
             );
 
-            return logDtos;
+            return new PagedResult<ActivityLogDto>
+            {
+                Items = logDtos,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages
+            };
             // burada da ayrıca manuel bir şekilde requestlog logu oluşturmuyoruz çünkü middleware tarafından otomatik oluşturuluyor zaten
         }
     }

@@ -18,6 +18,7 @@ namespace EmployeeManagement.Api.Validators
 
             RuleFor(x => x.Username)
                 .NotEmpty().WithMessage("Kullanıcı adı alanı boş bırakılamaz.")
+                .MinimumLength(3).WithMessage("Kullanıcı adı en az 3 karakter olmalıdır.")
                 .MustAsync(BeUniqueUsername).WithMessage("Bu kullanıcı adı zaten kullanılıyor.");
 
             RuleFor(x => x.Email)

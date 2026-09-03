@@ -1,4 +1,5 @@
 using EmployeeManagement.Api.DTOs.LogDtos;
+using EmployeeManagement.Api.DTOs;
 
 namespace EmployeeManagement.Api.Services.LogServices
 {
@@ -12,13 +13,15 @@ namespace EmployeeManagement.Api.Services.LogServices
             bool isSuccess,
             string? failureReason = null);
 
-        Task<List<ActivityLogDto>> GetAllActivityLogsAsync(
+        Task<PagedResult<ActivityLogDto>> GetAllActivityLogsAsync(
             string? username,
             string? targetName,
             string? action,
             bool? isSuccess,
             DateTime? startDate,
-            DateTime? endDate);
+            DateTime? endDate,
+            int pageNumber = 1,
+            int pageSize = 10);
            
     }
 }

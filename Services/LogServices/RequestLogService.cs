@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using EmployeeManagement.Api.Data;
 using EmployeeManagement.Api.DTOs.LogDtos;
 using EmployeeManagement.Api.Services.LogServices;
+using EmployeeManagement.Api.DTOs;
 
 namespace EmployeeManagement.Api.Services.LogServices
 {
@@ -19,14 +20,16 @@ namespace EmployeeManagement.Api.Services.LogServices
             _mapper = mapper;
             _activityLogService = activityLogService;
             _currentUsername = httpContextAccessor.HttpContext?.User?.Identity?.Name;
-        }   
-      
-        public async Task<List<RequestLogDto>> GetAllRequestLogsAsync(
+        }
+
+        public async Task<PagedResult<RequestLogDto>> GetAllRequestLogsAsync(
             string? httpMethod,
             int? statusCode,
             string? username,
             DateTime? startDate,
-            DateTime? endDate)
+            DateTime? endDate,
+            int pageNumber = 1,
+            int pageSize = 10)
         {
             var query = _context.RequestLogs.AsQueryable();
 
@@ -56,8 +59,15 @@ namespace EmployeeManagement.Api.Services.LogServices
                 query = query.Where(l => l.CreatedAt <= endDate.Value);
             }
 
-            var logs = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();  // en yeni logları en üstte göstermek için varsayılan olarak tarihe göre azalan sıralıyoruz
+            query = query.OrderByDescending(l => l.CreatedAt);  // en yeni loglar en üstte
+
+            var totalCount = await query.CountAsync();  // sayfalamadan ÖNCE, filtrelere uyan TOPLAM kayıt sayısı
+            var skip = (pageNumber - 1) * pageSize;
+            query = query.Skip(skip).Take(pageSize);
+            var logs = await query.ToListAsync();  // sadece o sayfadaki kayıtları çekiyoruz
+
             var logDtos = _mapper.Map<List<RequestLogDto>>(logs);
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
             var appliedFilters = new List<string>();
             if (!string.IsNullOrWhiteSpace(httpMethod))
@@ -83,14 +93,21 @@ namespace EmployeeManagement.Api.Services.LogServices
                 username: _currentUsername,
                 targetName: username,
                 action: "Read",
-                description: $"{_currentUsername} adlı kullanıcı, HTTP isteklerinin loglarını görüntüledi. ({logDtos.Count} kayıt bulundu){filterDescription}",
+                description: $"{_currentUsername} adlı kullanıcı, HTTP isteklerinin loglarını görüntüledi. ({totalCount} kayıt bulundu){filterDescription}",
                 isSuccess: true
             );
 
 
             // bu fonksiyonda activitylog daki gibi yeni bir requestlog logu eklemiyoruz çünkü middleware zaten otomatik ekliyor ancak bu fonksiyonu activity loga manuel ekliyoruz 
 
-            return logDtos;
+            return new PagedResult<RequestLogDto>
+            {
+                Items = logDtos,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages
+            };
         }
     }
 }

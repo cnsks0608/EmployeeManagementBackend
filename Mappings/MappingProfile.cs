@@ -24,7 +24,6 @@ namespace EmployeeManagement.Api.Mappings
                 .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Title.Department.Name));
 
             CreateMap<CreateEmployeeByAdminDto, Employee>();  // dto -> model
-            CreateMap<User, UserAdminDto>();
 
             // EmployeeAdminDto, EmployeeUserDto'dan miras aldığı için 
             // bu mapping'i tanımlamadan _mapper.Map<EmployeeUserDto>(employeeAdminDtoNesnesi) çağırınca
@@ -40,6 +39,9 @@ namespace EmployeeManagement.Api.Mappings
 
             CreateMap<RequestLog, RequestLogDto>();
             CreateMap<ActivityLog, ActivityLogDto>();
+
+            CreateMap<User, UserAdminDto>()
+                .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role.RoleName));
         }
     }
 }

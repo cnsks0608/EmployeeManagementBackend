@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using EmployeeManagement.Api.Data;
 using EmployeeManagement.Api.DTOs.UserDtos;
+using EmployeeManagement.Api.Enums;
 
 namespace EmployeeManagement.Api.Validators
 {
@@ -39,7 +40,7 @@ namespace EmployeeManagement.Api.Validators
                 .IsInEnum().WithMessage("Geçerli bir rol seçilmelidir.");  // enumlar null olamaz ancak hiçbir şey işaretlenmeden devam edilğirse 0 atanır. Bizim 0 diye bir rolümüz olmadığı için hata mesajı göndeririz 
         }
 
-        private async Task<bool> BeUniqueUsername(string username, CancellationToken cancellationToken)
+        private async Task<bool> BeUniqueUsername(string username, CancellationToken cancellationToken) // CancellationToken, bir işlemin hâlâ isteniyor mu yoksa vazgeçildi mi bilgisini taşıyan bir sinyaldir — örneğin kullanıcı "CreateUserByAdmin" isteği gönderdiğinde, username unique mi diye veritabanı sorgusu çalışırken kullanıcı sekmeyi kapatırsa, bu token sayesinde ASP.NET Core sorguyu yarıda keser ve sunucu artık kimsenin beklemediği bir iş için kaynak (CPU, DB bağlantısı) harcamamış olur.
         {
             return !await _context.Users.AnyAsync(u => u.Username == username, cancellationToken);
         }
@@ -51,7 +52,7 @@ namespace EmployeeManagement.Api.Validators
 
         private async Task<bool> EmployeeExists(int employeeId, CancellationToken cancellationToken)
         {
-            return await _context.Employees.AnyAsync(e => e.Id == employeeId, cancellationToken);
+            return await _context.Employees.AnyAsync(e => e.Id == employeeId && e.RowStatus != RowStatus.Deleted, cancellationToken);
         }
 
         private async Task<bool> EmployeeNotAlreadyLinked(int employeeId, CancellationToken cancellationToken)

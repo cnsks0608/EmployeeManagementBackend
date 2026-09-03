@@ -38,7 +38,7 @@ namespace EmployeeManagement.Api.Services.UserServices
         public async Task<UserAdminDto> GetMeAsync()
         {
             var userId = GetCurrentUserId();
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null) // mesela kullanıcı login durumundayken geçerli bir tokenı varken admin tarafından silinirse, userid null dönebilir (o yüzden burada exception attık)
             {
@@ -66,7 +66,7 @@ namespace EmployeeManagement.Api.Services.UserServices
         public async Task<UserAdminDto> UpdateMeAsync(UpdateMeDto updateMeDto)
         {
             var userId = GetCurrentUserId();
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null)
             {
@@ -142,7 +142,7 @@ namespace EmployeeManagement.Api.Services.UserServices
             int pageSize = 10,
             string status = "active")
         {
-            var query = _context.Users.AsQueryable();
+            var query = _context.Users.Include(u => u.Role).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -214,7 +214,7 @@ namespace EmployeeManagement.Api.Services.UserServices
 
         public async Task<UserAdminDto> GetUserByIdAsync(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
             {
@@ -241,7 +241,7 @@ namespace EmployeeManagement.Api.Services.UserServices
 
         public async Task<UserAdminDto> UpdateUserByAdminAsync(int id, UpdateUserByAdminDto updateUserByAdminDto)
         {
-            var user = await _context.Users.FindAsync(id);
+             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
             {
@@ -273,6 +273,7 @@ namespace EmployeeManagement.Api.Services.UserServices
             user.RowStatus = RowStatus.Updated;
 
             await _context.SaveChangesAsync();
+            await _context.Entry(user).Reference(u => u.Role).LoadAsync();  // RoleId değişmiş olabileceği için Role'ü güncel haliyle tekrar yüklüyoruz
 
             var userDto = _mapper.Map<UserAdminDto>(user);
 
@@ -306,6 +307,12 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             user.RowStatus = RowStatus.Deleted;
             await _context.SaveChangesAsync();
+            await _activityLogService.LogActivityAsync(
+               username: _currentUsername,
+               targetName: user.Username,
+               action: "Delete",
+               description: $"{_currentUsername} adlı kullanıcı, {user.Username} adlı kullanıcıyı sildi.",
+               isSuccess: true);
         }
 
         public async Task ChangePasswordAsync(ChangePasswordDto changePasswordDto)
@@ -353,7 +360,7 @@ namespace EmployeeManagement.Api.Services.UserServices
 
         public async Task<UserAdminDto> ReactivateUserAsync(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
             {
@@ -377,6 +384,19 @@ namespace EmployeeManagement.Api.Services.UserServices
                   isSuccess: false,
                   failureReason: "Bu kullanıcı zaten aktif.");
                 throw new Exception("Bu kullanıcı zaten aktif.");
+            }
+
+            var linkedEmployee = await _context.Employees.FindAsync(user.EmployeeId);
+            if (linkedEmployee.RowStatus == RowStatus.Deleted)
+            {
+                await _activityLogService.LogActivityAsync(
+                  username: _currentUsername,
+                  targetName: user.Username,
+                  action: "Reactivate",
+                  description: $"{_currentUsername} adlı kullanıcı, {user.Username} adlı kullanıcıyı yeniden aktifleştirmeye çalıştı ama bağlı olduğu çalışan silinmiş durumda.",
+                  isSuccess: false,
+                  failureReason: "Bağlı çalışan silinmiş durumda, önce çalışanın tekrar aktif edilmesi gerekiyor.");
+                throw new Exception("Bu kullanıcının bağlı olduğu çalışan silinmiş durumda. Önce çalışanı tekrar aktif etmelisiniz.");
             }
 
             user.RowStatus = RowStatus.Updated;

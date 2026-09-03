@@ -69,7 +69,8 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
 
             if (!string.IsNullOrWhiteSpace(email))  // email boş değilse, email üzerinde ara
             {
-                query = query.Where(e => e.Email.Contains(email));
+                var lowerEmail = email.ToLower();
+                query = query.Where(e => e.Email.ToLower().Contains(lowerEmail));
             }
 
             if (!string.IsNullOrWhiteSpace(registrationNumber))  // sicil no boş değilse, sicil no üzerinde ara
