@@ -128,13 +128,20 @@ namespace EmployeeManagement.Api.Controllers
                   description: $"{User.Identity?.Name} adlı kullanıcı, yeni bir çalışan oluşturmaya çalıştı ama girdiği bilgiler geçersizdi.",
                   isSuccess: false,
                   failureReason: string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
-                
+
                 return BadRequest(validationResult.Errors);
             }
 
-            var employee = await _employeeService.CreateEmployeeByAdminAsync(createEmployeeByAdminDto);
+            try
+            {
+                var employee = await _employeeService.CreateEmployeeByAdminAsync(createEmployeeByAdminDto);
+                return Ok(new { message = "Çalışan başarılı bir şekilde oluşturuldu.", employee });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
-            return Ok(new { message = "Çalışan başarılı bir şekilde oluşturuldu.", employee });
         }
 
         [HttpPut("UpdateEmployeeByAdmin/{id}")]

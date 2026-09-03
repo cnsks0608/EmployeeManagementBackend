@@ -42,6 +42,7 @@ namespace EmployeeManagement.Api.Services.UserServices
 
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
+            await _context.Entry(newUser).Reference(u => u.Role).LoadAsync();  // veritabanına yeni kaydedilen newUser nesnesinin Role navigation property'sini ayrıca bir sorguyla dolduruyor. Sorgularda RoleName i de görebilmemiz için 
 
             var userDto = _mapper.Map<UserAdminDto>(newUser);
 
