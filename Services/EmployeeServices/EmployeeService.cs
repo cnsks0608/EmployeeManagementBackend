@@ -43,7 +43,7 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             DateOnly? startHireDate,
             DateOnly? endHireDate,
             int pageNumber = 1,
-            int pageSize = 10,
+            int pageSize = 40,
             string status = "active",
             int? departmentId = null,
             int? titleId = null,
@@ -99,13 +99,14 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
                 query = query.Where(e => e.HireDate <= endHireDate.Value);
             }
 
-            if (status == "deleted")
+            if (status == "active")
+            {
+                query = query.Where(e => e.RowStatus != RowStatus.Deleted);
+            }
+
+            else if (status == "deleted")
             {
                 query = query.Where(e => e.RowStatus == RowStatus.Deleted);
-            }
-            else
-            {
-                query = query.Where(e => e.RowStatus == RowStatus.Created || e.RowStatus == RowStatus.Updated);
             }
 
             if (departmentId.HasValue)

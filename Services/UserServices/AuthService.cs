@@ -78,7 +78,7 @@ namespace EmployeeManagement.Api.Services.UserServices
             if (!isPasswordValid)
             {
                 await _activityLogService.LogActivityAsync(
-                    username: loginDto.MailOrUsername,
+                    username: null,
                     targetName: loginDto.MailOrUsername,
                     action: "Login",
                     description: $"{loginDto.MailOrUsername} ile giriş yapmaya çalışıldı ancak şifre hatalı.",
