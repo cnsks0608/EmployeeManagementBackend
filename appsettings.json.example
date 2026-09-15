@@ -1,0 +1,18 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=your_database_name;Username=your_username"
+  },
+  "Jwt": {
+    "Key": "YOUR_SECRET_KEY_HERE_MINIMUM_32_CHARACTERS_LONG",
+    "Issuer": "EmployeeManagementApi",
+    "Audience": "EmployeeManagementApp",
+    "ExpireMinutes": "60"
+  }
+}
