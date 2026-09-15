@@ -48,7 +48,8 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             int? departmentId = null,
             int? titleId = null,
             string? sortBy = null,
-            string? sortDirection = null)
+            string? sortDirection = null,
+            bool? hasNoUser = null)
 
 
         {
@@ -107,6 +108,12 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             else if (status == "deleted")
             {
                 query = query.Where(e => e.RowStatus == RowStatus.Deleted);
+            }
+
+            if (hasNoUser == true)
+            {
+                var employeeIdsWithUser = await _context.Users.Select(u => u.EmployeeId).ToListAsync();
+                query = query.Where(e => !employeeIdsWithUser.Contains(e.Id));
             }
 
             if (departmentId.HasValue)

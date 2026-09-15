@@ -47,6 +47,7 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string status = "active",
+            [FromQuery] bool? hasNoUser = null,
             [FromQuery] int? departmentId = null,
             [FromQuery] int? titleId = null,
             [FromQuery] string? sortBy = null,
@@ -56,7 +57,7 @@ namespace EmployeeManagement.Api.Controllers
 
 
             var pagedEmployees = await _employeeService.GetAllEmployeesAsync(
-                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate, pageNumber, pageSize, effectiveStatus, departmentId, titleId, sortBy, sortDirection); // verileri servisten employeeadmindto şeklinde (zengin) alırız
+                search, email, registrationNumber, minSalary, maxSalary, startHireDate, endHireDate, pageNumber, pageSize, effectiveStatus, departmentId, titleId, sortBy, sortDirection, hasNoUser); // verileri servisten employeeadmindto şeklinde (zengin) alırız
 
             if (User.IsInRole("Admin"))
             {

@@ -29,6 +29,22 @@ namespace EmployeeManagement.Api.Services.UserServices
 
         public async Task<UserAdminDto> CreateUserByAdminAsync(CreateUserByAdminDto createUserByAdminDto)
         {
+            var employee = await _context.Employees.FindAsync(createUserByAdminDto.EmployeeId);
+
+            if (employee == null || employee.RowStatus == RowStatus.Deleted)
+            {
+                throw new Exception("Seçilen çalışan bulunamadı veya silinmiş durumda.");
+            }
+
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u =>
+        u.EmployeeId == createUserByAdminDto.EmployeeId);
+
+            if (existingUser != null)
+            {
+                throw new Exception("Bu çalışana ait zaten bir kullanıcı hesabı bulunmaktadır.");
+            }
+
+
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(createUserByAdminDto.Password);  // dtodan gelen şifreyi hashler
 
             var newUser = new User

@@ -18,10 +18,11 @@ namespace EmployeeManagement.Api.Services.LogServices
             string? targetName,
             string? action,
             bool? isSuccess,
-            DateTime? startDate,
-            DateTime? endDate,
+            DateOnly? startDate,
+            DateOnly? endDate,
             int pageNumber = 1,
-            int pageSize = 10);
-           
+            int pageSize = 10,
+            string? sortDirection = null);
+
     }
 }

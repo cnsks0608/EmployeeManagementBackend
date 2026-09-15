@@ -16,7 +16,8 @@ namespace EmployeeManagement.Api.Services.UserServices
             int? employeeId,
             int pageNumber = 1,   // varsayılan: 1. sayfa (belirtilmezse otomatik bu değer kullanılır)
             int pageSize = 10,   // varsayılan: sayfa başına 10 kayıt
-            string status = "active");
+            string status = "active",
+            string? sortDirection = null);
         Task<UserAdminDto> GetUserByIdAsync(int id);
         Task<UserAdminDto> UpdateUserByAdminAsync(int id, UpdateUserByAdminDto updateUserByAdminDto);
         Task DeleteUserByAdminAsync(int id);

@@ -9,9 +9,10 @@ namespace EmployeeManagement.Api.Services.LogServices
             string? httpMethod, 
             int? statusCode,
             string? username,
-            DateTime? startDate,
-            DateTime? endDate,
-             int pageNumber = 1,
-            int pageSize = 10);
+            DateOnly? startDate,
+            DateOnly? endDate,
+            int pageNumber = 1,
+            int pageSize = 10,
+            string? sortDirection = null);
     }
 }

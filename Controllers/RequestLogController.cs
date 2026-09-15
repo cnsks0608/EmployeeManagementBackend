@@ -21,12 +21,13 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] string? httpMethod,
             [FromQuery] int? statusCode,
             [FromQuery] string? username,
-            [FromQuery] DateTime? startDate,
-            [FromQuery] DateTime? endDate,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? sortDirection = null)
         {
-            var logs = await _requestLogService.GetAllRequestLogsAsync(httpMethod, statusCode, username, startDate, endDate, pageNumber, pageSize);
+            var logs = await _requestLogService.GetAllRequestLogsAsync(httpMethod, statusCode, username, startDate, endDate, pageNumber, pageSize, sortDirection);
             return Ok(logs);
         }
     }

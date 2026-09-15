@@ -26,16 +26,17 @@ namespace EmployeeManagement.Api.Services.LogServices
             string? httpMethod,
             int? statusCode,
             string? username,
-            DateTime? startDate,
-            DateTime? endDate,
+            DateOnly? startDate,
+            DateOnly? endDate,
             int pageNumber = 1,
-            int pageSize = 10)
+            int pageSize = 10,
+            string? sortDirection = null)
         {
             var query = _context.RequestLogs.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(httpMethod))
             {
-                query = query.Where(l => l.HttpMethod == httpMethod.ToUpper());  // GET, POST gibi hep büyük harfle tutulduğu için büyük harfe çeviriyoruz
+                query = query.Where(l => l.HttpMethod == httpMethod.ToUpper());
             }
 
             if (statusCode.HasValue)
@@ -49,26 +50,32 @@ namespace EmployeeManagement.Api.Services.LogServices
                 query = query.Where(l => l.Username != null && l.Username.ToLower().Contains(lowerUsername));
             }
 
+            // EF Core uyumlu DateOnly dönüşümleri (l.CreatedAt.Date kullanılır):
             if (startDate.HasValue)
             {
-                query = query.Where(l => l.CreatedAt >= startDate.Value);
+                var startDateTime = DateTime.SpecifyKind(startDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+                query = query.Where(l => l.CreatedAt >= startDateTime);
             }
 
             if (endDate.HasValue)
             {
-                query = query.Where(l => l.CreatedAt <= endDate.Value);
+                var endDateTime = DateTime.SpecifyKind(endDate.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+                query = query.Where(l => l.CreatedAt <= endDateTime);
             }
 
-            query = query.OrderByDescending(l => l.CreatedAt);  // en yeni loglar en üstte
+            query = sortDirection == "asc"
+                ? query.OrderBy(l => l.CreatedAt)
+                : query.OrderByDescending(l => l.CreatedAt);
 
-            var totalCount = await query.CountAsync();  // sayfalamadan ÖNCE, filtrelere uyan TOPLAM kayıt sayısı
+            var totalCount = await query.CountAsync();
             var skip = (pageNumber - 1) * pageSize;
             query = query.Skip(skip).Take(pageSize);
-            var logs = await query.ToListAsync();  // sadece o sayfadaki kayıtları çekiyoruz
+            var logs = await query.ToListAsync();
 
             var logDtos = _mapper.Map<List<RequestLogDto>>(logs);
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
+            // Log açıklaması için filtre yazıları hazırlanıyor:
             var appliedFilters = new List<string>();
             if (!string.IsNullOrWhiteSpace(httpMethod))
                 appliedFilters.Add($"httpMethod: {httpMethod}");
@@ -96,9 +103,6 @@ namespace EmployeeManagement.Api.Services.LogServices
                 description: $"{_currentUsername} adlı kullanıcı, HTTP isteklerinin loglarını görüntüledi. ({totalCount} kayıt bulundu){filterDescription}",
                 isSuccess: true
             );
-
-
-            // bu fonksiyonda activitylog daki gibi yeni bir requestlog logu eklemiyoruz çünkü middleware zaten otomatik ekliyor ancak bu fonksiyonu activity loga manuel ekliyoruz 
 
             return new PagedResult<RequestLogDto>
             {

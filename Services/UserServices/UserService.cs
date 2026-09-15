@@ -140,9 +140,10 @@ namespace EmployeeManagement.Api.Services.UserServices
             int? employeeId,
             int pageNumber = 1,
             int pageSize = 10,
-            string status = "active")
+            string status = "active",
+            string? sortDirection = null)
         {
-            var query = _context.Users.Include(u => u.Role).AsQueryable();
+            var query = _context.Users.Include(u => u.Role).Include(u => u.Employee).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -162,14 +163,18 @@ namespace EmployeeManagement.Api.Services.UserServices
                 query = query.Where(u => u.EmployeeId == employeeId.Value);
             }
 
-            if (status == "deleted")
+            if (status == "active")
+            {
+                query = query.Where(u => u.RowStatus != RowStatus.Deleted);
+            }
+            else if (status == "deleted")
             {
                 query = query.Where(u => u.RowStatus == RowStatus.Deleted);
             }
-            else
-            {
-                query = query.Where(u => u.RowStatus == RowStatus.Created || u.RowStatus == RowStatus.Updated);
-            }
+
+            query = sortDirection == "desc"
+                ? query.OrderByDescending(u => u.Username)
+                : query.OrderBy(u => u.Username);
 
             var totalCount = await query.CountAsync();  // filtrelere uyan TOPLAM kayıt sayısı (sayfalama uygulanmadan ÖNCE sayılmalı eğer sonra yapsaydık sadece o sayfadaki count sayısı gelirdi)
             var skip = (pageNumber - 1) * pageSize;  // kaç kaydın atlanacağını hesaplıyoruz
@@ -214,7 +219,7 @@ namespace EmployeeManagement.Api.Services.UserServices
 
         public async Task<UserAdminDto> GetUserByIdAsync(int id)
         {
-             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _context.Users.Include(u => u.Role).Include(u => u.Employee).FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
             {
@@ -241,7 +246,7 @@ namespace EmployeeManagement.Api.Services.UserServices
 
         public async Task<UserAdminDto> UpdateUserByAdminAsync(int id, UpdateUserByAdminDto updateUserByAdminDto)
         {
-             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
             {

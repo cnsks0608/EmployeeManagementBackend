@@ -21,7 +21,9 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             int? departmentId = null,
             int? titleId = null,
             string? sortBy = null,
-            string? sortDirection = null);
+            string? sortDirection = null,
+            bool? hasNoUser = null);
+
 
         Task<EmployeeAdminDto> GetEmployeeByIdAsync(int id);
         Task<EmployeeAdminDto> CreateEmployeeByAdminAsync(CreateEmployeeByAdminDto createEmployeeByAdminDto); // parametre olarak kullanıcının gönderdiği veriyi alıyor (createemployeeByAdmindto), geriye employeeadmindto return ediyor bu sefer id si de dönüyor 

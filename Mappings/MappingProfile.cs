@@ -41,7 +41,8 @@ namespace EmployeeManagement.Api.Mappings
             CreateMap<ActivityLog, ActivityLogDto>();
 
             CreateMap<User, UserAdminDto>()
-                .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role.RoleName));
+                .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role.RoleName))
+                .ForMember(dest => dest.EmployeeRegistrationNumber, opt => opt.MapFrom(src => src.Employee.RegistrationNumber));
         }
     }
 }

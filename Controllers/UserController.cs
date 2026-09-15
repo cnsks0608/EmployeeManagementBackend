@@ -98,9 +98,10 @@ namespace EmployeeManagement.Api.Controllers
             [FromQuery] int? employeeId,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string status = "active")
+            [FromQuery] string status = "active",
+            [FromQuery] string? sortDirection=null)
         {
-            var users = await _userService.GetAllUsersAsync(search, role, employeeId, pageNumber, pageSize, status);
+            var users = await _userService.GetAllUsersAsync(search, role, employeeId, pageNumber, pageSize, status, sortDirection);
             return Ok(users);
         }
 

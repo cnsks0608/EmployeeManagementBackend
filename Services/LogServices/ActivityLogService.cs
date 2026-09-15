@@ -13,7 +13,7 @@ namespace EmployeeManagement.Api.Services.LogServices
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly string? _currentUsername;
         private readonly IMapper _mapper;
-        
+
 
         public ActivityLogService(AppDbContext context, IHttpContextAccessor httpContextAccessor, IMapper mapper)
         {
@@ -52,10 +52,11 @@ namespace EmployeeManagement.Api.Services.LogServices
             string? targetName,
             string? action,
             bool? isSuccess,
-            DateTime? startDate,
-            DateTime? endDate,
+            DateOnly? startDate,
+            DateOnly? endDate,
             int pageNumber = 1,
-            int pageSize = 10)
+            int pageSize = 10,
+            string? sortDirection = null)
         {
             var query = _context.ActivityLogs.AsQueryable();
 
@@ -81,17 +82,24 @@ namespace EmployeeManagement.Api.Services.LogServices
                 query = query.Where(l => l.IsSuccess == isSuccess.Value);
             }
 
+        
+            // EF Core ve PostgreSQL timestamptz uyumlu UTC dönüşümleri:
             if (startDate.HasValue)
             {
-                query = query.Where(l => l.CreatedAt >= startDate.Value);
+                var startDateTime = DateTime.SpecifyKind(startDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+                query = query.Where(l => l.CreatedAt >= startDateTime);
             }
 
             if (endDate.HasValue)
             {
-                query = query.Where(l => l.CreatedAt <= endDate.Value);
+                var endDateTime = DateTime.SpecifyKind(endDate.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+                query = query.Where(l => l.CreatedAt <= endDateTime);
             }
 
-            query = query.OrderByDescending(l => l.CreatedAt);  // en yeni loglar en üstte
+
+            query = sortDirection == "asc"
+                  ? query.OrderBy(l => l.CreatedAt)
+                  : query.OrderByDescending(l => l.CreatedAt);
 
             var totalCount = await query.CountAsync();  // sayfalamadan ÖNCE, filtrelere uyan TOPLAM kayıt sayısı
             var skip = (pageNumber - 1) * pageSize;
