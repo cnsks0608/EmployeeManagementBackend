@@ -84,12 +84,9 @@ namespace EmployeeManagement.Api.Services.UserServices
             if (user.Username != updateMeDto.Username)
                 changes.Add($"Username: {user.Username} → {updateMeDto.Username}");
 
-            if (user.Email != updateMeDto.Email)
-                changes.Add($"Email: {user.Email} → {updateMeDto.Email}");
             // Değişiklik kontrollerini alanları değişirmeden önce yapmalıyız yoksa değişiklik yokmuş gibi olur
 
             user.Username = updateMeDto.Username;
-            user.Email = updateMeDto.Email;
             user.RowStatus = RowStatus.Updated;
 
             await _context.SaveChangesAsync();
@@ -265,15 +262,12 @@ namespace EmployeeManagement.Api.Services.UserServices
             if (user.Username != updateUserByAdminDto.Username)
                 changes.Add($"Username: {user.Username} → {updateUserByAdminDto.Username}");
 
-            if (user.Email != updateUserByAdminDto.Email)
-                changes.Add($"Email: {user.Email} → {updateUserByAdminDto.Email}");
 
             if (user.RoleId != (int)updateUserByAdminDto.RoleType)
                 changes.Add($"Role Id: {user.RoleId} → {(int)updateUserByAdminDto.RoleType}");
 
 
             user.Username = updateUserByAdminDto.Username;
-            user.Email = updateUserByAdminDto.Email;
             user.RoleId = (int)updateUserByAdminDto.RoleType;
             user.RowStatus = RowStatus.Updated;
 

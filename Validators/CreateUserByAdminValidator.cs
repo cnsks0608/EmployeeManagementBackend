@@ -19,10 +19,6 @@ namespace EmployeeManagement.Api.Validators
                 .MinimumLength(3).WithMessage("Kullanıcı adı en az 3 karakter olmalıdır.")
                 .MustAsync(BeUniqueUsername).WithMessage("Bu kullanıcı adı zaten kullanılıyor.");
 
-            RuleFor(x => x.Email)
-                .NotEmpty().WithMessage("Email alanı boş bırakılamaz.")
-                .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.")
-                .MustAsync(BeUniqueEmail).WithMessage("Bu email adresi zaten kullanılıyor.");
 
             RuleFor(x => x.Password)
                 .NotEmpty().WithMessage("Şifre boş bırakılamaz.")
@@ -45,10 +41,6 @@ namespace EmployeeManagement.Api.Validators
             return !await _context.Users.AnyAsync(u => u.Username == username, cancellationToken);
         }
 
-        private async Task<bool> BeUniqueEmail(string email, CancellationToken cancellationToken)
-        {
-            return !await _context.Users.AnyAsync(u => u.Email == email, cancellationToken);
-        }
 
         private async Task<bool> EmployeeExists(int employeeId, CancellationToken cancellationToken)
         {

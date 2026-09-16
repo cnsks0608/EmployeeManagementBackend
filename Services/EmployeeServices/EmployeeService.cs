@@ -315,6 +315,13 @@ namespace EmployeeManagement.Api.Services.EmployeeServices
             employee.HireDate = updateEmployeeByAdminDto.HireDate;     // dto dan gelen bilgiler employee değişkeninin uygun alanlarına atanır 
             employee.TitleId = updateEmployeeByAdminDto.TitleId;
 
+            // Bu Employee'ye bağlı bir User varsa, onun email'ini de, güncelleyelim
+            var linkedUser = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeId == employee.Id);
+            if (linkedUser != null)
+            {
+                linkedUser.Email = updateEmployeeByAdminDto.Email;
+            }
+            
             employee.RowStatus = RowStatus.Updated;  // güncelleme yapıldığı için RowStatus'u Updated yapıyoruz
 
             await _context.SaveChangesAsync();   // veritabanında bu değişiklikler kornur 

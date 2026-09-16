@@ -50,7 +50,7 @@ namespace EmployeeManagement.Api.Services.UserServices
             var newUser = new User
             {
                 Username = createUserByAdminDto.Username,
-                Email = createUserByAdminDto.Email,
+                Email = employee.Email,
                 PasswordHash = passwordHash,  // şifre veriabnında hashlenmiş halde tutulur
                 RoleId = (int)createUserByAdminDto.RoleType, // kayıt sayfasında role için enum aldık onu int e çevirip veritabanında roleid olarak sakladık
                 EmployeeId = createUserByAdminDto.EmployeeId
