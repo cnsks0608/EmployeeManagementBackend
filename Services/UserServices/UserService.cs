@@ -386,7 +386,7 @@ namespace EmployeeManagement.Api.Services.UserServices
             }
 
             var linkedEmployee = await _context.Employees.FindAsync(user.EmployeeId);
-            if (linkedEmployee.RowStatus == RowStatus.Deleted)
+            if (linkedEmployee == null ||linkedEmployee.RowStatus == RowStatus.Deleted)
             {
                 await _activityLogService.LogActivityAsync(
                   username: _currentUsername,
