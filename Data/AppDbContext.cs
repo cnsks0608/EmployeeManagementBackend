@@ -19,6 +19,7 @@ namespace EmployeeManagement.Api.Data
         public DbSet<RequestLog> RequestLogs { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
 
+        public DbSet<Chat> Chats { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

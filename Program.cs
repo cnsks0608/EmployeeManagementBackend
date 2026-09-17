@@ -10,6 +10,7 @@ using System.Text;
 using EmployeeManagement.Api.Middleware;
 using EmployeeManagement.Api.Services.CompanyServices;
 using EmployeeManagement.Api.Services.LogServices;
+using EmployeeManagement.Api.Services.ChatServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IRequestLogService, RequestLogService>();
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
